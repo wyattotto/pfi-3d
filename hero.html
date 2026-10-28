@@ -46,7 +46,7 @@
   .act.ghost{border-color:var(--grey)}
   .act:hover{background:var(--ink);color:var(--light)}
   [hidden]{display:none!important}
-  @media (max-width:360px){.bar .eye .long{display:none}.bar{padding-left:10px}.bar .eye{font-size:9px;letter-spacing:.12em}.mode{padding:0 7px;font-size:9px}.chip{padding:0 8px}}
+  @media (max-width:360px){.bar .eye .long,.mode .long{display:none}.bar{padding-left:10px}.bar .eye{font-size:9px;letter-spacing:.12em}.mode{padding:0 7px;font-size:9px}.chip{padding:0 8px}}
 </style>
 </head>
 <body>
@@ -55,7 +55,7 @@
     <div class="eye"><span class="long">Interactive </span>3D model</div>
     <div class="modes" role="group" aria-label="Mode">
       <button type="button" class="mode" data-mode="configure" aria-pressed="true">Configure</button>
-      <button type="button" class="mode" data-mode="build" aria-pressed="false">Build it yourself</button>
+      <button type="button" class="mode" data-mode="build" aria-pressed="false">Build it<span class="long"> yourself</span></button>
     </div>
   </div>
 
