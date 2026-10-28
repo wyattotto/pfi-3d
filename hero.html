@@ -96,6 +96,7 @@
   var NAMES = {sq:'Square',  '1q':'1Q corner','2q':'2Q','3q':'3Q',round:'Round',half:'Half round',quarter:'Quarter round',race:'Racetrack'};
   var state = { mode:'configure', shape:'sq', info:null };
   var coarse = window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches;
+  window.addEventListener('pointerdown', function(e){ var t = e.pointerType === 'touch'; if (t !== coarse) { coarse = t; render(); } }, { capture:true, passive:true });
   var $ = function(id){ return document.getElementById(id); };
 
   var chips = $('chips');

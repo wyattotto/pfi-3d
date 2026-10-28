@@ -141,6 +141,7 @@
   var $ = function(id){ return document.getElementById(id); };
   var esc = function(t){ return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
   var coarse = window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches;
+  window.addEventListener('pointerdown', function(e){ var t = e.pointerType === 'touch'; if (t !== coarse) { coarse = t; render(); } }, { capture:true, passive:true });
 
   var canvas = $('c');
   var viewer = window.PFI3D.create(canvas, { mode:'light', partColor:'#74787C', accent:ACCENT, onChange:function(info){ S.info = info; render(); } });
