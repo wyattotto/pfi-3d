@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PFI 3D Form Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&display=swap">
+<style>
+  :root{--ink:#141618;--line:#3A3D40;--orange:#F37021;--tint:#FCE3D2;--light:#E9E6E1;--grey:#C9C5BE;--rule:#DCD8D2;--soft:#4A4D50;--card:#F1EFEB}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--card);color:var(--ink);font-family:Archivo,system-ui,sans-serif;font-size:14px;line-height:1.4;-webkit-font-smoothing:antialiased}
+  button{font:inherit;cursor:pointer;color:var(--ink);-webkit-tap-highlight-color:transparent}
+  button:disabled{cursor:default;opacity:.35}
+  button:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+  [hidden]{display:none!important}
+  .app{height:100%;display:flex;flex-direction:column}
+  header{flex:none;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;padding:12px 18px;background:var(--ink);color:var(--light)}
+  .eye{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--orange)}
+  .ttl{font-family:Anton,Impact,sans-serif;font-size:24px;line-height:1.05;letter-spacing:.01em;text-transform:uppercase;margin-top:3px}
+  .modes{display:flex;gap:4px}
+  .mode{height:38px;padding:0 14px;border:1px solid var(--light);background:transparent;color:var(--light);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+  .mode:hover{border-color:var(--orange);color:var(--orange)}
+  .mode[aria-pressed="true"]{background:var(--orange);border-color:var(--orange);color:var(--ink)}
+  main{flex:1;min-height:0;display:flex}
+  .stage{position:relative;flex:1 1 auto;min-width:0;background:#E9E7E2;overflow:hidden}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  .badge{position:absolute;top:14px;left:14px;padding:9px 12px 8px;background:var(--ink);color:var(--light);pointer-events:none}
+  .badge .code{font-family:Anton,Impact,sans-serif;font-size:28px;line-height:1}
+  .badge .sub{font-size:11px;color:var(--grey);margin-top:4px}
+  .sel{position:absolute;top:14px;right:14px;max-width:240px;padding:9px 12px;background:var(--ink);color:var(--light);pointer-events:none}
+  .sel .cat{font-size:10px;color:var(--grey);letter-spacing:.12em;text-transform:uppercase}
+  .sel .lbl{font-weight:600;margin-top:2px}
+  .done{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--orange);color:var(--ink);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+  .foot{position:absolute;left:14px;right:14px;bottom:14px;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px;pointer-events:none}
+  .hint{padding:6px 10px;background:rgba(255,255,255,.92);font-size:12px;color:var(--soft)}
+  .reset{pointer-events:auto;display:flex;align-items:center;gap:6px;height:38px;padding:0 12px;background:#fff;border:1px solid var(--grey);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  .reset:hover{border-color:var(--ink)}
+  aside{flex:0 0 340px;min-height:0;overflow-y:auto;padding:18px 18px 14px;display:flex;flex-direction:column;gap:20px;background:var(--card);border-left:1px solid var(--rule)}
+  .grp{display:flex;flex-direction:column;gap:9px}
+  h2{margin:0;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--soft)}
+  .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  .tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:66px;padding:6px 2px;background:#fff;border:1px solid var(--grey);font-size:11px;font-weight:600}
+  .tile:hover{border-color:var(--ink)}
+  .tile[aria-pressed="true"]{background:var(--tint);border:2px solid var(--orange);padding:5px 1px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .row .k{font-weight:600}
+  .step{display:flex;align-items:center;gap:4px}
+  .pm{width:38px;height:38px;border:1px solid var(--grey);background:#fff;font-size:20px;line-height:1}
+  .pm:hover{border-color:var(--ink)}
+  output{min-width:58px;text-align:center;font-family:Anton,Impact,sans-serif;font-size:22px;line-height:1}
+  .note{margin:0;font-size:12px;color:var(--soft)}
+  .presets{display:flex;flex-wrap:wrap;gap:6px}
+  .pre{min-width:48px;height:34px;padding:0 8px;background:#fff;border:1px solid var(--grey);font-weight:600}
+  .pre:hover{border-color:var(--ink)}
+  .pre[aria-pressed="true"]{background:var(--tint);border:2px solid var(--orange)}
+  .seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--ink)}
+  .seg button{height:38px;border:0;background:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  .seg button+button{border-left:1px solid var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:var(--light)}
+  .stepnav{display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fff;border:1px solid var(--rule)}
+  .stepnav .pm{flex:none;display:grid;place-items:center}
+  .stepnav .t{flex:1;min-width:0}
+  .stepnav .t small{display:block;font-size:11px;color:var(--soft)}
+  .stepnav .t b{font-weight:600}
+  .tog{display:flex;align-items:center;gap:10px;min-height:34px;padding:0 2px;border:0;background:transparent;text-align:left}
+  .box{width:18px;height:18px;flex:none;border:1.5px solid #8A8F96;background:#fff;display:grid;place-items:center}
+  .tog[aria-pressed="true"] .box{background:var(--ink);border-color:var(--ink)}
+  .parts{margin:0;padding:0;list-style:none;border-top:1px solid var(--rule)}
+  .parts li{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--rule)}
+  .sw{width:12px;height:12px;flex:none}
+  .qty{min-width:34px;font-family:Anton,Impact,sans-serif;font-size:17px;line-height:1}
+  .big{font-family:Anton,Impact,sans-serif;font-size:26px;line-height:1.05;text-transform:uppercase;margin:0}
+  .track{height:8px;background:var(--rule);overflow:hidden}
+  .track i{display:block;height:100%;background:var(--orange);transition:width .25s}
+  .win{padding:12px 14px;background:var(--tint);border:2px solid var(--orange)}
+  .win b{display:block;font-family:Anton,Impact,sans-serif;font-weight:400;font-size:20px;text-transform:uppercase}
+  .btn{height:44px;border:1px solid var(--ink);background:#fff;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+  .btn:hover{background:var(--ink);color:var(--light)}
+  .btn.dark{background:var(--ink);color:var(--light)}
+  .btn.dark:hover{background:#2A2D30}
+  .contact{margin-top:auto;padding-top:12px;border-top:1px solid var(--rule);font-size:12px;color:var(--soft)}
+  @media (max-width:760px){
+    header{padding:10px 12px}.ttl{font-size:20px}.mode{height:34px;padding:0 9px;font-size:10px}
+    main{flex-direction:column}
+    .stage{flex:0 0 46%;min-height:250px}
+    aside{flex:1 1 auto;border-left:0;border-top:1px solid var(--rule);padding:14px 12px}
+    .badge .code{font-size:22px}.hint{font-size:10px}.reset span{display:none}.reset{padding:0 9px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div><div class="eye">Interactive 3D model</div><div class="ttl">PFI 3D Form Builder</div></div>
+    <div class="modes" role="group" aria-label="Mode">
+      <button type="button" class="mode" data-act="mode" data-v="configure" aria-pressed="true">Configure</button>
+      <button type="button" class="mode" data-act="mode" data-v="build" aria-pressed="false">Build it yourself</button>
+    </div>
+  </header>
+  <main>
+    <section class="stage" aria-label="3D view">
+      <canvas id="c" aria-label="3D model of the PFI form. Drag to rotate, scroll or pinch to zoom."></canvas>
+      <div class="badge"><div class="code" id="code"></div><div class="sub" id="sub"></div></div>
+      <div class="sel" id="sel" hidden><div class="cat" id="selCat"></div><div class="lbl" id="selLbl"></div></div>
+      <div class="done" id="done" role="status" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5 L9.5 18 L20 6"/></svg>
+        Form complete
+      </div>
+      <div class="foot">
+        <div class="hint" id="hint"></div>
+        <button type="button" class="reset" data-act="reset">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+          <span>Reset view</span>
+        </button>
+      </div>
+    </section>
+    <aside id="side"></aside>
+  </main>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function(){
+  var ACCENT = '#F37021';
+  var S = { mode:'configure', shape:'sq', a:42, b:42, e:6, s:36, depth:16, view:'assembled', step:0, context:true, slab:false, dims:true, colorBy:false, info:null };
+  var NAMES = { sq:'Square / rectangle', '1q':'1Q corner', '2q':'2Q', '3q':'3Q', round:'Round', half:'Half round', quarter:'Quarter round', race:'Racetrack' };
+  var ICON = {
+    sq:'<rect x="5" y="5" width="18" height="18"/>',
+    '1q':'<path d="M21 5 L5 21"/><path d="M3 4 H25 M4 3 V25" stroke-width="1.6" stroke-dasharray="2 2.5" opacity="0.55"/>',
+    '2q':'<path d="M4 6 L14 16 L24 6"/><path d="M2 5 H26" stroke-width="1.6" stroke-dasharray="2 2.5" opacity="0.55"/>',
+    '3q':'<path d="M5 5 V23 H23 V5"/><path d="M2 4 H26" stroke-width="1.6" stroke-dasharray="2 2.5" opacity="0.55"/>',
+    round:'<circle cx="14" cy="14" r="9"/>',
+    half:'<path d="M5 5 V11 A9 9 0 0 0 23 11 V5"/><path d="M2 4 H26" stroke-width="1.6" stroke-dasharray="2 2.5" opacity="0.55"/>',
+    quarter:'<path d="M21 5 V9 A12 12 0 0 1 9 21 H5"/><path d="M3 4 H25 M4 3 V25" stroke-width="1.6" stroke-dasharray="2 2.5" opacity="0.55"/>',
+    race:'<rect x="3" y="8" width="22" height="12" rx="6"/>'
+  };
+  var TILES = [['sq','Square'],['1q','1Q'],['2q','2Q'],['3q','3Q'],['round','Round'],['half','Half round'],['quarter','Quarter'],['race','Racetrack']];
+  var RANGE = { a:[12,144,6], b:[12,144,6], e:[6,72,6], s:[6,144,6], depth:[4,48,1] };
+  var $ = function(id){ return document.getElementById(id); };
+  var esc = function(t){ return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  var coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+
+  var canvas = $('c');
+  var viewer = window.PFI3D.create(canvas, { mode:'light', partColor:'#74787C', accent:ACCENT, onChange:function(info){ S.info = info; render(); } });
+  function sync(){
+    viewer.set({ shape:S.shape, a:S.a, b:S.b, e:S.e, s:S.s, depth:S.depth });
+    viewer.setView({ view:S.view, step:S.step, context:S.context, slab:S.slab, dims:S.dims, colorBy:S.colorBy });
+    viewer.setMode(S.mode);
+  }
+
+  function stepper(k, label, txt){
+    return '<div class="row"><span class="k">' + label + '</span><div class="step">' +
+      '<button type="button" class="pm" data-act="bump" data-k="' + k + '" data-d="-1" aria-label="' + label + ' smaller">−</button>' +
+      '<output>' + txt + '</output>' +
+      '<button type="button" class="pm" data-act="bump" data-k="' + k + '" data-d="1" aria-label="' + label + ' larger">+</button></div></div>';
+  }
+  function pressed(on){ return ' aria-pressed="' + (on ? 'true' : 'false') + '"'; }
+
+  function render(){
+    var info = S.info || { parts:[], steps:[], layers:[], total:0, placed:0, plan:'', depth:'', code:null, complete:false, selected:null };
+    var build = S.mode === 'build', sh = S.shape;
+    var nSteps = Math.max(1, info.steps.length), step = Math.min(S.step, nSteps - 1);
+    var pct = info.total ? Math.round(100 * info.placed / info.total) : 0;
+
+    document.querySelectorAll('.mode').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v === S.mode ? 'true' : 'false'); });
+    $('code').textContent = build ? (info.placed + ' / ' + info.total) : (info.code || NAMES[sh] || '');
+    $('sub').textContent = build ? 'parts placed' : (info.plan ? info.plan + ' plan · ' + info.depth + ' deep' : '');
+    var sel = !build && info.selected;
+    $('sel').hidden = !sel;
+    if (sel) { $('selCat').textContent = info.selected.catName || ''; $('selLbl').textContent = info.selected.label || ''; }
+    $('done').hidden = !(build && info.complete);
+    $('hint').textContent = build ? 'Drag a part into its outline · drag empty space to rotate'
+      : (coarse ? 'Drag to rotate · pinch to zoom · tap a part to name it' : 'Drag to rotate · scroll to zoom · click a part to name it');
+
+    var h = '';
+    if (!build) {
+      h += '<div class="grp"><h2>Shape</h2><div class="tiles">';
+      TILES.forEach(function(t){
+        h += '<button type="button" class="tile" data-act="shape" data-v="' + t[0] + '"' + pressed(sh === t[0]) + '>' +
+          '<svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">' + ICON[t[0]] + '</svg><span>' + t[1] + '</span></button>';
+      });
+      h += '</div></div>';
+
+      var lbl = { sq:['Length','Width'], '1q':['Length',''], '2q':['Side 1','Side 2'], '3q':['Legs','Back'] }[sh] || ['',''];
+      h += '<div class="grp"><h2>Size</h2>';
+      if (sh === 'sq' || sh === '1q' || sh === '2q' || sh === '3q') {
+        h += stepper('a', lbl[0], S.a + '"');
+        if (sh !== '1q') h += stepper('b', lbl[1], S.b + '"');
+      }
+      if (sh === 'half' || sh === 'quarter') h += stepper('e', 'Extenders', S.e + '"');
+      if (sh === 'race') h += stepper('s', 'Straight sides', S.s + '"');
+      if (sh === 'round' || sh === 'half' || sh === 'quarter' || sh === 'race') h += '<p class="note">Rounds use 32R12 quarter-round parts.</p>';
+      h += '<p class="note">Sides come in 6" steps.</p></div>';
+
+      h += '<div class="grp"><h2>Depth</h2>' + stepper('depth', 'Footing to finished floor', S.depth + '"') + '<div class="presets">';
+      [8,12,16,24,30].forEach(function(d){ h += '<button type="button" class="pre" data-act="depth" data-v="' + d + '"' + pressed(S.depth === d) + '>' + d + '"</button>'; });
+      h += '</div><p class="note">' + esc(info.layers.length > 1 ? 'Stacks as ' + info.layers.join(' + ') : (info.layers.length ? 'One ' + info.layers[0] + ' tall piece per side' : '')) + '</p></div>';
+
+      h += '<div class="grp"><h2>View</h2><div class="seg" role="group" aria-label="View">';
+      [['assembled','Assembled'],['exploded','Exploded'],['steps','Steps']].forEach(function(v){ h += '<button type="button" data-act="view" data-v="' + v[0] + '"' + pressed(S.view === v[0]) + '>' + v[1] + '</button>'; });
+      h += '</div>';
+      if (S.view === 'steps') {
+        h += '<div class="stepnav"><button type="button" class="pm" data-act="step" data-d="-1" aria-label="Previous step"' + (step <= 0 ? ' disabled' : '') + '><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 L8 12 L15 19"/></svg></button>' +
+          '<div class="t"><small>Step ' + (step + 1) + ' of ' + nSteps + '</small><b>' + esc(info.steps[step] || '') + '</b></div>' +
+          '<button type="button" class="pm" data-act="step" data-d="1" aria-label="Next step"' + (step >= nSteps - 1 ? ' disabled' : '') + '><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5 L16 12 L9 19"/></svg></button></div>';
+      }
+      h += '<div>';
+      [['context','Footing, walls & column'],['slab','Finished slab'],['dims','Dimensions'],['colorBy','Color by part type']].forEach(function(t){
+        h += '<button type="button" class="tog" data-act="tog" data-k="' + t[0] + '"' + pressed(S[t[0]]) + '><span class="box">' +
+          (S[t[0]] ? '<svg width="12" height="12" viewBox="0 0 22 22" aria-hidden="true"><path d="M4 11.5 L9 16 L18 6" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '') +
+          '</span><span>' + t[1] + '</span></button>';
+      });
+      h += '</div></div>';
+
+      h += '<div class="grp"><div class="row"><h2>What ships</h2><span class="note">' + info.total + ' parts</span></div><ul class="parts">';
+      info.parts.forEach(function(p){ h += '<li><span class="sw" style="background:' + esc(p.color) + '"></span><span class="qty">' + p.qty + '×</span><span>' + esc(p.label) + '</span></li>'; });
+      h += '</ul><p class="note">Includes bolts, nuts and anchors.</p></div>';
+    } else {
+      h += '<div class="grp"><p class="big">Put it together</p><p class="note" style="font-size:13px">Drag each part into its matching outline. Parts snap in when they’re close. Drag empty space to look around.</p></div>';
+      h += '<div class="grp"><div class="row" style="font-weight:600"><span>' + info.placed + ' of ' + info.total + ' parts placed</span><span>' + pct + '%</span></div>' +
+        '<div class="track" role="progressbar" aria-label="Parts placed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div></div>';
+      if (info.complete) h += '<div class="win"><b>Nice work.</b>All ' + info.total + ' parts are in place' + (info.code ? ' — that’s a ' + esc(info.code) + '.' : '.') + '</div>';
+      var cats = [];
+      info.parts.forEach(function(p){ if (!cats.some(function(c){ return c.name === p.catName; })) cats.push({ name:p.catName, sw:p.color }); });
+      h += '<div class="grp"><h2>Part colors</h2><ul class="parts" style="border:0">';
+      cats.forEach(function(c){ h += '<li style="border:0;padding:3px 0"><span class="sw" style="background:' + esc(c.sw) + '"></span><span>' + esc(c.name) + '</span></li>'; });
+      h += '</ul></div>';
+      h += '<div class="grp"><button type="button" class="btn" data-act="scatter">Take it apart again</button><button type="button" class="btn" data-act="solve" style="border-color:var(--grey)">Snap everything in place</button><button type="button" class="btn dark" data-act="mode" data-v="configure">Back to configure</button></div>';
+    }
+    h += '<p class="contact">Questions or a quote? PFI sales · 770-932-8849</p>';
+
+    var side = $('side'), top = side.scrollTop, f = document.activeElement, fk = f && f.closest && f.closest('#side') ? keyOf(f) : null;
+    side.innerHTML = h;
+    side.scrollTop = top;
+    if (fk) { var n = side.querySelector(fk); if (n) n.focus(); }
+  }
+  function keyOf(el){
+    var s = '[data-act="' + el.dataset.act + '"]';
+    if (el.dataset.v) s += '[data-v="' + el.dataset.v + '"]';
+    if (el.dataset.k) s += '[data-k="' + el.dataset.k + '"]';
+    if (el.dataset.d) s += '[data-d="' + el.dataset.d + '"]';
+    return s;
+  }
+
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+    var a = b.dataset.act, v = b.dataset.v;
+    if (a === 'mode') S.mode = v;
+    else if (a === 'shape') { S.shape = v; S.step = 0; }
+    else if (a === 'bump') { var k = b.dataset.k, r = RANGE[k]; S[k] = Math.max(r[0], Math.min(r[1], S[k] + r[2] * Number(b.dataset.d))); }
+    else if (a === 'depth') S.depth = Number(v);
+    else if (a === 'view') S.view = v;
+    else if (a === 'step') { var n = Math.max(1, (S.info && S.info.steps.length) || 1); S.step = Math.max(0, Math.min(n - 1, S.step + Number(b.dataset.d))); }
+    else if (a === 'tog') S[b.dataset.k] = !S[b.dataset.k];
+    else if (a === 'reset') { viewer.resetView(); return; }
+    else if (a === 'scatter') { viewer.scatter(); return; }
+    else if (a === 'solve') { viewer.solve(); return; }
+    sync(); render();
+  });
+
+  sync(); render();
+})();
+</script>
+</body>
+</html>
