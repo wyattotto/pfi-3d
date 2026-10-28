@@ -140,7 +140,7 @@
   var RANGE = { a:[12,144,6], b:[12,144,6], e:[6,72,6], s:[6,144,6], depth:[4,48,1] };
   var $ = function(id){ return document.getElementById(id); };
   var esc = function(t){ return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-  var coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  var coarse = window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches;
 
   var canvas = $('c');
   var viewer = window.PFI3D.create(canvas, { mode:'light', partColor:'#74787C', accent:ACCENT, onChange:function(info){ S.info = info; render(); } });
