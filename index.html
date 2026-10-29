@@ -23,6 +23,11 @@
   .mode{height:38px;padding:0 14px;border:1px solid var(--light);background:transparent;color:var(--light);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
   .mode:hover{border-color:var(--orange);color:var(--orange)}
   .mode[aria-pressed="true"]{background:var(--orange);border-color:var(--orange);color:var(--ink)}
+  .hright{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .fs{display:flex;align-items:center;gap:7px;height:38px;padding:0 12px;border:1px solid var(--line);background:transparent;color:var(--light);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+  .fs:hover{border-color:var(--orange);color:var(--orange)}
+  .contact a{color:var(--ink);font-weight:600;text-decoration:none;border-bottom:1px solid var(--orange)}
+  .contact a:hover{color:var(--orange)}
   main{flex:1;min-height:0;display:flex}
   .stage{position:relative;flex:1 1 auto;min-width:0;background:#E9E7E2;overflow:hidden}
   canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
@@ -83,6 +88,7 @@
   .contact{margin-top:auto;padding-top:12px;border-top:1px solid var(--rule);font-size:12px;color:var(--soft)}
   @media (max-width:760px){
     header{padding:10px 12px}.ttl{font-size:20px}.mode{height:34px;padding:0 9px;font-size:10px}
+    .fs{height:34px;padding:0 9px}.fs span{display:none}
     main{flex-direction:column}
     .stage{flex:0 0 46%;min-height:250px}
     aside{flex:1 1 auto;border-left:0;border-top:1px solid var(--rule);padding:14px 12px}
@@ -94,9 +100,15 @@
 <div class="app">
   <header>
     <div><div class="eye">Interactive 3D model</div><div class="ttl">PFI 3D Form Builder</div></div>
-    <div class="modes" role="group" aria-label="Mode">
-      <button type="button" class="mode" data-act="mode" data-v="configure" aria-pressed="true">Configure</button>
-      <button type="button" class="mode" data-act="mode" data-v="build" aria-pressed="false">Build it yourself</button>
+    <div class="hright">
+      <div class="modes" role="group" aria-label="Mode">
+        <button type="button" class="mode" data-act="mode" data-v="configure" aria-pressed="true">Configure</button>
+        <button type="button" class="mode" data-act="mode" data-v="build" aria-pressed="false">Build it yourself</button>
+      </div>
+      <button type="button" class="fs" id="fs" aria-label="Full screen" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+        <span id="fsText">Full screen</span>
+      </button>
     </div>
   </header>
   <main>
@@ -120,11 +132,15 @@
   </main>
 </div>
 
-<script src="engine-a85d4c70.js"></script>
+<script src="engine-b9469431.js"></script>
 <script>
 (function(){
   var ACCENT = '#F37021';
-  var S = { mode:'configure', shape:'sq', a:42, b:42, e:6, s:36, depth:16, view:'assembled', step:0, context:true, slab:false, dims:true, colorBy:false, info:null };
+  var DEFAULTS = { mode:'configure', shape:'sq', a:42, b:42, e:6, s:36, depth:16, view:'assembled', step:0, context:true, slab:false, dims:true, colorBy:false, info:null };
+  var S = Object.assign({}, DEFAULTS);
+  var embedded = (function(){ try { return window.self !== window.top; } catch (e) { return true; } })();
+  var params = new URLSearchParams(location.search);
+  var kiosk = params.get('kiosk') === '1';
   var NAMES = { sq:'Square / rectangle', '1q':'1Q corner', '2q':'2Q', '3q':'3Q', round:'Round', half:'Half round', quarter:'Quarter round', race:'Racetrack' };
   var ICON = {
     sq:'<rect x="5" y="5" width="18" height="18"/>',
@@ -138,6 +154,13 @@
   };
   var TILES = [['sq','Square'],['1q','1Q'],['2q','2Q'],['3q','3Q'],['round','Round'],['half','Half round'],['quarter','Quarter'],['race','Racetrack']];
   var RANGE = { a:[12,144,6], b:[12,144,6], e:[6,72,6], s:[6,144,6], depth:[4,48,1] };
+  var clamp = function(k, n){ return Math.max(RANGE[k][0], Math.min(RANGE[k][1], n)); };
+  // Share links: ?shape=sq&a=42&b=42&d=16 (&mode=build, &view=exploded). The address keeps up as you change things.
+  if (NAMES[params.get('shape')]) S.shape = params.get('shape');
+  ['a','b','e','s'].forEach(function(k){ var n = parseFloat(params.get(k)); if (isFinite(n)) S[k] = clamp(k, Math.round(n / 6) * 6); });
+  var pd = parseFloat(params.get('d')); if (isFinite(pd)) S.depth = clamp('depth', Math.round(pd * 2) / 2);
+  if (params.get('mode') === 'build') S.mode = 'build';
+  if (['assembled','exploded','steps'].indexOf(params.get('view')) >= 0) S.view = params.get('view');
   var $ = function(id){ return document.getElementById(id); };
   var esc = function(t){ return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
   var coarse = window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches;
@@ -149,7 +172,22 @@
     viewer.set({ shape:S.shape, a:S.a, b:S.b, e:S.e, s:S.s, depth:S.depth });
     viewer.setView({ view:S.view, step:S.step, context:S.context, slab:S.slab, dims:S.dims, colorBy:S.colorBy });
     viewer.setMode(S.mode);
+    if (!kiosk) {
+      var q = new URLSearchParams(), sh = S.shape;
+      q.set('shape', sh);
+      if (sh === 'sq' || sh === '2q' || sh === '3q') { q.set('a', S.a); q.set('b', S.b); }
+      if (sh === '1q') q.set('a', S.a);
+      if (sh === 'half' || sh === 'quarter') q.set('e', S.e);
+      if (sh === 'race') q.set('s', S.s);
+      q.set('d', S.depth);
+      if (S.mode === 'build') q.set('mode', 'build');
+      if (S.view !== 'assembled') q.set('view', S.view);
+      try { history.replaceState(null, '', '?' + q.toString()); } catch (e) {}
+    }
   }
+
+  // Inside a host page (the Wix site), plain scrolling scrolls the page; Ctrl/Cmd + scroll or pinch zooms.
+  if (embedded) canvas.addEventListener('wheel', function(e){ if (!e.ctrlKey && !e.metaKey) e.stopImmediatePropagation(); }, { capture:true });
 
   function stepper(k, label, txt){
     return '<div class="row"><span class="k">' + label + '</span><div class="step">' +
@@ -173,7 +211,8 @@
     if (sel) { $('selCat').textContent = info.selected.catName || ''; $('selLbl').textContent = info.selected.label || ''; }
     $('done').hidden = !(build && info.complete);
     $('hint').textContent = build ? 'Drag a part into its outline · drag empty space to rotate'
-      : (coarse ? 'Drag to rotate · pinch to zoom · tap a part to name it' : 'Drag to rotate · scroll to zoom · click a part to name it');
+      : (coarse ? 'Drag to rotate · pinch to zoom · tap a part to name it'
+        : 'Drag to rotate · ' + (embedded ? 'Ctrl + scroll' : 'scroll') + ' to zoom · click a part to name it');
 
     var h = '';
     if (!build) {
@@ -230,7 +269,7 @@
       h += '</ul></div>';
       h += '<div class="grp"><button type="button" class="btn" data-act="scatter">Take it apart again</button><button type="button" class="btn" data-act="solve" style="border-color:var(--grey)">Snap everything in place</button><button type="button" class="btn dark" data-act="mode" data-v="configure">Back to configure</button></div>';
     }
-    h += '<p class="contact">Questions or a quote? PFI sales · 770-561-6174</p>';
+    h += '<p class="contact">Questions or a quote? PFI sales · <a href="tel:+17705616174">770-561-6174</a></p>';
 
     var side = $('side'), top = side.scrollTop, f = document.activeElement, fk = f && f.closest && f.closest('#side') ? keyOf(f) : null;
     side.innerHTML = h;
@@ -260,6 +299,26 @@
     else if (a === 'solve') { viewer.solve(); return; }
     sync(); render();
   });
+
+  // Full screen. Inside the website's frame, open the builder on its own page (same shape and size) instead.
+  var fs = $('fs');
+  if (embedded) {
+    fs.hidden = false; $('fsText').textContent = 'Open full screen'; fs.setAttribute('aria-label', 'Open the builder full screen in a new tab');
+    fs.addEventListener('click', function(){ window.open(location.href, '_blank', 'noopener'); });
+  } else if (document.fullscreenEnabled) {
+    fs.hidden = false;
+    fs.addEventListener('click', function(){ if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(function(){}); });
+    document.addEventListener('fullscreenchange', function(){ $('fsText').textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen'; fs.setAttribute('aria-label', $('fsText').textContent); });
+  }
+
+  // Trade-show kiosk (?kiosk=1): after 90 s with nobody touching it, reset and slowly turn the model.
+  if (kiosk) {
+    var idle;
+    var wake = function(){ viewer.controls.autoRotate = false; clearTimeout(idle); idle = setTimeout(sleep, 90000); };
+    var sleep = function(){ S = Object.assign({}, DEFAULTS); sync(); render(); viewer.resetView(); viewer.controls.autoRotate = true; viewer.controls.autoRotateSpeed = 0.8; };
+    ['pointerdown','wheel','keydown'].forEach(function(t){ window.addEventListener(t, wake, { passive:true }); });
+    wake();
+  }
 
   sync(); render();
 })();
