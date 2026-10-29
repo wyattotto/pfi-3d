@@ -22,6 +22,9 @@
   .mode[aria-pressed="true"]{background:var(--orange);border-color:var(--orange);color:var(--ink)}
   .view{position:relative;flex:1;min-height:0;background:#E9E7E2;overflow:hidden}
   canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transition:opacity .3s ease}
+  .poster.gone{opacity:0;pointer-events:none}
+  .loading{cursor:progress}
   .badge{position:absolute;top:12px;left:12px;padding:8px 10px 7px;background:var(--ink);color:var(--light);pointer-events:none;max-width:calc(100% - 24px)}
   .badge .code{font-family:Anton,Impact,sans-serif;font-size:22px;line-height:1;letter-spacing:.01em}
   .badge .sub{font-size:10px;color:var(--grey);margin-top:4px;white-space:nowrap}
@@ -61,6 +64,7 @@
 
   <div class="view" id="view">
     <canvas id="c" aria-label="3D model of a Pocket Form Isolator form. Drag to rotate."></canvas>
+    <img class="poster" id="poster" alt="" aria-hidden="true" decoding="async">
     <div class="badge"><div class="code" id="code">42SQ16</div><div class="sub" id="sub">42" &times; 42" plan &middot; 16" deep</div></div>
     <div class="sel" id="sel" hidden><div class="cat" id="selCat"></div><div class="lbl" id="selLbl"></div></div>
     <div class="done" id="done" role="status" hidden>
@@ -88,9 +92,9 @@
   </div>
 </div>
 
-<script src="engine.js"></script>
 <script>
 (function(){
+  var ENGINE_SRC = 'engine-a85d4c70.js';   // empty = engine is inlined above (standalone build)
   var ACCENT = '#F37021';
   var SHAPES = [['sq','Square'],['2q','2Q'],['3q','3Q'],['round','Round'],['half','Half round'],['quarter','Quarter'],['race','Racetrack']];
   var NAMES = {sq:'Square',  '1q':'1Q corner','2q':'2Q','3q':'3Q',round:'Round',half:'Half round',quarter:'Quarter round',race:'Racetrack'};
@@ -107,23 +111,66 @@
     chips.appendChild(b);
   });
 
-  var canvas = $('c');
-  var viewer = window.PFI3D.create(canvas, { mode:'light', partColor:'#74787C', accent:ACCENT, onChange:function(info){ state.info = info; render(); } });
-  viewer.set({ shape:'sq', a:42, b:42, depth:16 });
-  viewer.setView({ view:'assembled', step:0, context:true, slab:false, dims:true, colorBy:false });
+  var canvas = $('c'), view = $('view'), poster = $('poster');
+  var viewer = null, loading = false;
+
+  // Until someone interacts, show a still of the model (same view the engine opens on)
+  // and don't load or run the 3D engine at all. Keeps page-load CPU near zero.
+  var POSTERS = [['hero-poster-d.webp', 0.8418], ['hero-poster-m.webp', 0.9175]];
+  (function pickPoster(){
+    if (!ENGINE_SRC) { poster.remove(); return; }
+    var ar = (view.clientWidth || 1) / (view.clientHeight || 1), best = POSTERS[0];
+    POSTERS.forEach(function(p){ if (Math.abs(Math.log(p[1] / ar)) < Math.abs(Math.log(best[1] / ar))) best = p; });
+    poster.src = best[0];
+  })();
+
+  function init(){
+    viewer = window.PFI3D.create(canvas, { mode:'light', partColor:'#74787C', accent:ACCENT, onChange:function(info){ state.info = info; render(); } });
+    viewer.set({ shape:'sq', a:42, b:42, depth:16 });
+    if (state.shape !== 'sq') viewer.set({ shape:state.shape });
+    viewer.setView({ view:'assembled', step:0, context:true, slab:false, dims:true, colorBy:false });
+    if (state.mode !== 'configure') viewer.setMode(state.mode);
+    document.documentElement.classList.remove('loading');
+    render();
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ if (poster.isConnected) poster.classList.add('gone'); }); });
+  }
+  function start(){
+    if (viewer || loading) return;
+    loading = true;
+    if (window.PFI3D) { init(); return; }
+    document.documentElement.classList.add('loading');
+    var s = document.createElement('script');
+    s.src = ENGINE_SRC; s.async = true;
+    s.onload = init;
+    s.onerror = function(){ loading = false; document.documentElement.classList.remove('loading'); };
+    document.head.appendChild(s);
+  }
+  // Real input only. Browsers send a synthetic zero-movement pointer event at load, so a
+  // pointermove counts only when the cursor actually moved.
+  var WAKE = ['pointermove', 'pointerdown', 'touchstart', 'focusin', 'keydown', 'wheel'];
+  function onFirst(e){
+    if (e.type === 'pointermove' && !(e.movementX || e.movementY)) return;
+    WAKE.forEach(function(t){ document.removeEventListener(t, onFirst, true); });
+    start();
+  }
+  if (ENGINE_SRC) WAKE.forEach(function(t){ document.addEventListener(t, onFirst, { capture:true, passive:true }); });
+  else start();
 
   // Page-friendly input: plain wheel scrolls the page; pinch / Ctrl+wheel zooms the model.
-  var view = $('view');
-  view.addEventListener('wheel', function(e){ viewer.controls.enableZoom = !!(e.ctrlKey || e.metaKey); }, { capture:true, passive:true });
-  view.addEventListener('pointerdown', function(e){ viewer.controls.enableZoom = (e.pointerType === 'touch'); }, { capture:true });
+  view.addEventListener('wheel', function(e){ if (viewer) viewer.controls.enableZoom = !!(e.ctrlKey || e.metaKey); }, { capture:true, passive:true });
+  view.addEventListener('pointerdown', function(e){ if (viewer) viewer.controls.enableZoom = (e.pointerType === 'touch'); }, { capture:true });
   function touchMode(){ canvas.style.touchAction = state.mode === 'build' ? 'none' : 'pan-y'; }
 
   function render(){
-    var info = state.info || viewer.info() || {};
+    var info = state.info || (viewer && viewer.info()) || {};
     var build = state.mode === 'build';
     document.querySelectorAll('.mode').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.mode === state.mode ? 'true' : 'false'); });
     chips.querySelectorAll('.chip').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.shape === state.shape ? 'true' : 'false'); });
-    if (build) {
+    if (!viewer) {
+      // engine not loaded yet: keep the still's badge unless the visitor already picked something else
+      if (build) { $('code').textContent = '…'; $('sub').textContent = 'loading parts'; }
+      else if (state.shape !== 'sq') { $('code').textContent = NAMES[state.shape] || ''; $('sub').textContent = 'loading…'; }
+    } else if (build) {
       $('code').textContent = (info.placed || 0) + ' / ' + (info.total || 0);
       $('sub').textContent = 'parts placed';
     } else {
@@ -149,8 +196,9 @@
 
   document.addEventListener('click', function(e){
     var t = e.target.closest('button'); if (!t) return;
-    if (t.dataset.mode) { state.mode = t.dataset.mode; viewer.setMode(state.mode); render(); }
-    else if (t.dataset.shape) { state.shape = t.dataset.shape; viewer.set({ shape:state.shape }); viewer.setView({ step:0 }); render(); }
+    if (t.dataset.mode) { state.mode = t.dataset.mode; if (viewer) viewer.setMode(state.mode); else start(); render(); }
+    else if (t.dataset.shape) { state.shape = t.dataset.shape; if (viewer) { viewer.set({ shape:state.shape }); viewer.setView({ step:0 }); } else start(); render(); }
+    else if (!viewer) start();
     else if (t.id === 'reset') viewer.resetView();
     else if (t.id === 'scatter') viewer.scatter();
     else if (t.id === 'solve') viewer.solve();
